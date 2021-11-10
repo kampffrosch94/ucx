@@ -2519,6 +2519,15 @@ void ucp_worker_wait_mem(ucp_worker_h worker, void *address)
 
 ucs_status_t ucp_worker_wait(ucp_worker_h worker)
 {
+    ucs_status_t status;
+
+    status = ucp_worker_wait_timed(worker, -1);
+    ucs_assertv(status != UCS_INPROGRESS, "status=%d", status);
+    return status;
+}
+
+ucs_status_t ucp_worker_wait_timed(ucp_worker_h worker, int timeout)
+{
     ucp_worker_iface_t *wiface;
     struct pollfd *pfd;
     ucs_status_t status;
@@ -2568,10 +2577,16 @@ ucs_status_t ucp_worker_wait(ucp_worker_h worker)
      * because of using the same descriptor in multiple threads.
      */
     for (;;) {
-        ret = poll(pfd, nfds, -1);
+        ret = poll(pfd, nfds, timeout);
+
         if (ret >= 0) {
-            ucs_assertv(ret == 1, "ret=%d", ret);
-            status = UCS_OK;
+            if (ret == 0) { // timed out
+                ucs_assertv(timeout >= 0, "ret=0, when timeout=%d", timeout);
+                status = UCS_INPROGRESS;
+            } else {
+                ucs_assertv(ret == 1, "ret=%d", ret);
+                status = UCS_OK;
+            }
             goto out;
         } else {
             if (errno != EINTR) {

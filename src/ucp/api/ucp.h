@@ -1933,6 +1933,22 @@ ucs_status_t ucp_worker_wait(ucp_worker_h worker);
 
 /**
  * @ingroup UCP_WAKEUP
+ * @brief Wait for an event of the worker with a timeout.
+ *
+ * Completely analogous to @ref ucp_worker_wait, except a timeout for waiting.
+ *
+ * @param [in]  worker    Worker to wait for events on.
+ * @param [in]  timeout   Timeout in milliseconds for blocking.
+ *
+ * @return Error code as defined by @ref ucs_status_t
+ *         --> UCS_OK ... event occurred
+ *         --> UCS_INPROGRESS ... timed out, no event
+ */
+ucs_status_t ucp_worker_wait_timed(ucp_worker_h worker, int timeout);
+
+
+/**
+ * @ingroup UCP_WAKEUP
  * @brief Wait for memory update on the address
  *
  * This routine waits for a memory update at the local memory @a address.  This
@@ -4193,3 +4209,4 @@ ucs_status_ptr_t ucp_worker_flush_nbx(ucp_worker_h worker,
 END_C_DECLS
 
 #endif
+

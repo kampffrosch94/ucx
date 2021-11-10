@@ -148,6 +148,39 @@ UCS_TEST_SKIP_COND_P(test_ucp_wakeup, tx_wait, has_transport("tcp"),
     EXPECT_EQ(send_data, recv_data);
 }
 
+UCS_TEST_P(test_ucp_wakeup, tx_wait_timed, "ZCOPY_THRESH=10000")
+{
+    const ucp_datatype_t DATATYPE = ucp_dt_make_contig(1);
+    const size_t COUNT            = 20000;
+    const uint64_t TAG            = 0xdeadbeef;
+    const int timeout             = 10;
+    std::string send_data(COUNT, '2'), recv_data(COUNT, '1');
+    void *sreq, *rreq;
+
+    sender().connect(&receiver(), get_ep_params());
+
+    rreq = ucp_tag_recv_nb(receiver().worker(), &recv_data[0], COUNT, DATATYPE,
+                           TAG, (ucp_tag_t)-1, recv_completion);
+
+    sreq = ucp_tag_send_nb(sender().ep(), &send_data[0], COUNT, DATATYPE, TAG,
+                           send_completion);
+
+    if (UCS_PTR_IS_PTR(sreq)) {
+        /* wait for send completion */
+        do {
+            ucp_worker_wait_timed(sender().worker(), timeout);
+            while (progress());
+        } while (!ucp_request_is_completed(sreq));
+        ucp_request_release(sreq);
+    } else {
+        ASSERT_UCS_OK(UCS_PTR_STATUS(sreq));
+    }
+
+    wait(rreq);
+
+    EXPECT_EQ(send_data, recv_data);
+}
+
 UCS_TEST_P(test_ucp_wakeup, signal)
 {
     int efd;
